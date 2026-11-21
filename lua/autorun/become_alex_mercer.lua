@@ -9,6 +9,7 @@ local ENERGY_NETWORK_KEY = "BecomeAlexMercerEnergy"
 
 local activePossessions = {}
 local playerEnergy = {}
+local playerViewAngles = {}
 
 local EnergyThreshold = CreateConVar("become_alex_mercer_energy_threshold", "0.1",
 	{FCVAR_ARCHIVE, FCVAR_NOTIFY}, "变身前所需的最低能量")
@@ -73,10 +74,12 @@ end
 
 hook.Add("PlayerSpawn", "BecomeAlexMercerEnergyReset", function(ply)
 	setEnergy(ply, ENERGY_MAX)
+	playerViewAngles[playerKey(ply)] = nil
 end)
 
 hook.Add("PlayerDisconnect", "BecomeAlexMercerEnergyCleanup", function(ply)
 	playerEnergy[playerKey(ply)] = nil
+	playerViewAngles[playerKey(ply)] = nil
 end)
 
 hook.Add("OnNPCKilled", "BecomeAlexMercerEnergyKill", function(victim, attacker, inflictor)
@@ -112,9 +115,14 @@ timer.Create("BecomeAlexMercer.EnergyTick", ENERGY_TICK, 0, function()
 	for _, ply in ipairs(player.GetAll()) do
 		if IsValid(ply) and ply:Alive() then
 			local energy = getEnergy(ply)
-			local npc = activePossessions[playerKey(ply)]
+			local key = playerKey(ply)
+			local npc = activePossessions[key]
 			local transformed = IsValid(npc) and npc:IsPossessed() and npc:GetPossessor() == ply
 			local nextEnergy = transformed and energy - drain or energy + regen
+
+			if transformed then
+				playerViewAngles[key] = ply:EyeAngles()
+			end
 
 			if nextEnergy ~= energy then
 				setEnergy(ply, nextEnergy)
@@ -188,6 +196,11 @@ local function preserveExitState(npc)
 	npc.OnDispossessed = function(self, ply)
 		local position = self:GetPos()
 		local velocity = self:GetVelocity()
+		local mercerEyeAngles = self:EyeAngles()
+		local recordedEyeAngles = IsValid(ply) and playerViewAngles[playerKey(ply)]
+		local eyeAngles = Angle(recordedEyeAngles and recordedEyeAngles.p or mercerEyeAngles.p, mercerEyeAngles.y,
+			mercerEyeAngles.r)
+		if IsValid(ply) then playerViewAngles[playerKey(ply)] = nil end
 
 		if isfunction(originalOnDispossessed) then
 			originalOnDispossessed(self, ply)
@@ -195,11 +208,13 @@ local function preserveExitState(npc)
 
 		if IsValid(ply) and ply:Alive() then
 			ply:SetPos(position)
+			ply:SetEyeAngles(eyeAngles)
 			ply:SetLocalVelocity(velocity)
 
 			timer.Simple(0.1, function()
 				if not IsValid(ply) or not ply:IsPlayer() or not ply:Alive() or ply:InVehicle() then return end
 				if isfunction(ply.DrG_IsPossessing) and ply:DrG_IsPossessing() then return end
+				ply:SetEyeAngles(eyeAngles)
 				ply:SetLocalVelocity(velocity)
 			end)
 		end
