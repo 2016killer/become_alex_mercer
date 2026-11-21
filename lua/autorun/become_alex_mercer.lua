@@ -329,6 +329,7 @@ if CLIENT then
 	local HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT = 600, 10
 	local ENERGY_WIDTH_RATIO = 0.25
 	local ENERGY_GAP = 6
+	local ENERGY_HOLD_TIME = 1
 	local ENERGY_FADE_TIME = 0.75
 	local ENERGY_NETWORK_KEY = "BecomeAlexMercerEnergy"
 	local lastEnergy
@@ -345,7 +346,7 @@ if CLIENT then
 
 		if lastEnergy == nil then
 			lastEnergy = energy
-			lastEnergyChange = now - (energy >= 0.9995 and ENERGY_FADE_TIME or 0)
+			lastEnergyChange = now - (energy >= 0.9995 and ENERGY_HOLD_TIME + ENERGY_FADE_TIME or 0)
 		elseif math.abs(energy - lastEnergy) > 0.0005 then
 			lastEnergy = energy
 			lastEnergyChange = now
@@ -355,7 +356,10 @@ if CLIENT then
 			return energy, 1
 		end
 
-		local alpha = math.Clamp(1 - (now - lastEnergyChange) / ENERGY_FADE_TIME, 0, 1)
+		local age = now - lastEnergyChange
+		if age <= ENERGY_HOLD_TIME then return energy, 1 end
+
+		local alpha = math.Clamp(1 - (age - ENERGY_HOLD_TIME) / ENERGY_FADE_TIME, 0, 1)
 		if alpha <= 0 then return end
 		return energy, alpha
 	end
