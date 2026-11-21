@@ -105,6 +105,12 @@ local function preserveExitState(npc)
 		if IsValid(ply) and ply:Alive() then
 			ply:SetPos(position)
 			ply:SetLocalVelocity(velocity)
+
+			timer.Simple(0.1, function()
+				if not IsValid(ply) or not ply:IsPlayer() or not ply:Alive() or ply:InVehicle() then return end
+				if isfunction(ply.DrG_IsPossessing) and ply:DrG_IsPossessing() then return end
+				ply:SetLocalVelocity(velocity)
+			end)
 		end
 	end
 end
