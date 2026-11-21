@@ -313,22 +313,39 @@ if CLIENT then
 	local HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT = 600, 10
 	local ENERGY_WIDTH_RATIO = 0.25
 	local ENERGY_GAP = 6
+	local ENERGY_FADE_TIME = 0.75
 	local ENERGY_NETWORK_KEY = "BecomeAlexMercerEnergy"
+	local lastEnergy
+	local lastEnergyChange = -math.huge
 
-	local function getLocalEnergy()
+	local function getLocalEnergyDisplay()
 		local ply = LocalPlayer()
 		if not IsValid(ply) or not ply:Alive() then return end
 
 		local energy = math.Clamp(ply:GetNW2Float(ENERGY_NETWORK_KEY, 1), 0, 1)
 		local npc = isfunction(ply.DrG_GetPossessing) and ply:DrG_GetPossessing() or NULL
 		local transformed = IsValid(npc) and npc:GetClass() == "drg_alex_mercer"
+		local now = RealTime()
 
-		if not transformed and energy >= 0.9995 then return end
-		return energy
+		if lastEnergy == nil then
+			lastEnergy = energy
+			lastEnergyChange = now - (energy >= 0.9995 and ENERGY_FADE_TIME or 0)
+		elseif math.abs(energy - lastEnergy) > 0.0005 then
+			lastEnergy = energy
+			lastEnergyChange = now
+		end
+
+		if transformed then
+			return energy, 1
+		end
+
+		local alpha = math.Clamp(1 - (now - lastEnergyChange) / ENERGY_FADE_TIME, 0, 1)
+		if alpha <= 0 then return end
+		return energy, alpha
 	end
 
 	hook.Add("DrawOverlay", "BecomeAlexMercerEnergy", function()
-		local energy = getLocalEnergy()
+		local energy, alpha = getLocalEnergyDisplay()
 		if not energy then return end
 
 		local scale = ScrH() / 720
@@ -336,19 +353,21 @@ if CLIENT then
 		local height = HEALTH_BAR_HEIGHT * scale
 		local x = HEALTH_BAR_X * scale
 		local y = (HEALTH_BAR_Y - HEALTH_BAR_HEIGHT - ENERGY_GAP) * scale
+		local drawAlpha = math.Clamp(math.floor(alpha * 255), 0, 255)
 
-		surface.SetDrawColor(255, 255, 255, 255)
+		surface.SetDrawColor(255, 255, 255, drawAlpha)
 		surface.SetMaterial(BAR_MATERIAL)
 		surface.DrawTexturedRect(x, y, width, height)
 
 		if energy > 0 then
 			render.SetScissorRect(math.floor(x), math.floor(y), math.ceil(x + width * energy), math.ceil(y + height), true)
+			surface.SetDrawColor(255, 255, 255, drawAlpha)
 			surface.SetMaterial(FILL_MATERIAL)
 			surface.DrawTexturedRect(x, y, width, height)
 			render.SetScissorRect(0, 0, 0, 0, false)
 		end
 
 		draw.SimpleText(math.Round(energy * 100) .. "%", "DermaDefaultBold", x + width * 0.5, y - 10 * scale,
-			Color(255, 255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+			Color(255, 255, 255, drawAlpha), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	end)
 end
