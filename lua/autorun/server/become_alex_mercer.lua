@@ -47,6 +47,49 @@ local function createMercer(ply)
 	return npc
 end
 
+local function applyPlayerDisguise(npc, ply)
+	local model = ply:GetModel()
+	if not model or model == "" or not util.IsValidModel(model) then
+		return false
+	end
+
+	local bodygroups = {}
+	for _, group in ipairs(ply:GetBodyGroups() or {}) do
+		bodygroups[#bodygroups + 1] = group.id .. "=" .. ply:GetBodygroup(group.id)
+	end
+
+	local kind = "PEDESTRIAN"
+	if isfunction(npc.MercerIsMilitary) and npc:MercerIsMilitary(ply) then
+		kind = "MILITARY"
+	end
+
+	local disguise = {
+		mdl = model,
+		skin = ply:GetSkin(),
+		bg = table.concat(bodygroups, ","),
+		kind = kind,
+		factions = {},
+	}
+
+	if isfunction(npc.MercerApplyDisguise) then
+		npc:MercerApplyDisguise(disguise, false)
+	else
+		npc:SetNW2String("MercerDisguiseModel", disguise.mdl)
+		npc:SetNW2Int("MercerDisguiseSkin", disguise.skin)
+		npc:SetNW2String("MercerDisguiseBG", disguise.bg)
+		npc:SetNW2String("MercerDisguiseKind", disguise.kind)
+		npc.MercerDisguiseFactions = disguise.factions
+	end
+
+	if isfunction(npc.MercerSetForm) and ALEX_MERCER_DISGUISE then
+		npc:MercerSetForm(ALEX_MERCER_DISGUISE, false)
+	else
+		npc:SetNW2Bool("MercerDisguised", true)
+	end
+
+	return true
+end
+
 local function preserveExitState(npc)
 	local originalOnDispossessed = npc.OnDispossessed
 
@@ -151,4 +194,10 @@ concommand.Add("become_alex_mercer", function(ply)
 	activePossessions[key] = npc
 	preserveExitState(npc)
 	startCleanupTimer()
+
+	timer.Simple(0, function()
+		if IsValid(npc) and IsValid(ply) and npc:IsPossessed() and npc:GetPossessor() == ply then
+			applyPlayerDisguise(npc, ply)
+		end
+	end)
 end)
