@@ -47,11 +47,12 @@ local function createMercer(ply)
 	return npc
 end
 
-local function preserveExitPosition(npc)
+local function preserveExitState(npc)
 	local originalOnDispossessed = npc.OnDispossessed
 
 	npc.OnDispossessed = function(self, ply)
 		local position = self:GetPos()
+		local velocity = self:GetVelocity()
 
 		if isfunction(originalOnDispossessed) then
 			originalOnDispossessed(self, ply)
@@ -59,6 +60,7 @@ local function preserveExitPosition(npc)
 
 		if IsValid(ply) and ply:Alive() then
 			ply:SetPos(position)
+			ply:SetLocalVelocity(velocity)
 		end
 	end
 end
@@ -137,6 +139,7 @@ concommand.Add("become_alex_mercer", function(ply)
 		return
 	end
 
+	local playerVelocity = ply:GetVelocity()
 	local result = npc:Possess(ply)
 	if result ~= "ok" then
 		npc:Remove()
@@ -144,7 +147,8 @@ concommand.Add("become_alex_mercer", function(ply)
 		return
 	end
 
+	npc:SetVelocity(playerVelocity)
 	activePossessions[key] = npc
-	preserveExitPosition(npc)
+	preserveExitState(npc)
 	startCleanupTimer()
 end)
