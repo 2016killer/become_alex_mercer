@@ -140,7 +140,7 @@ local function createMercer(ply)
 	if not IsValid(npc) then return end
 
 	npc:SetPos(ply:GetPos())
-	npc:SetAngles(Angle(0, ply:EyeAngles().y, 0))
+	npc:SetAngles(ply:EyeAngles())
 	npc:Spawn()
 	npc:Activate()
 
@@ -308,6 +308,7 @@ concommand.Add("become_alex_mercer", function(ply)
 		return
 	end
 
+	npc:SetAngles(Angle(0, npc:GetAngles().y, 0))
 	npc:SetVelocity(playerVelocity)
 	activePossessions[key] = npc
 	preserveExitState(npc)
