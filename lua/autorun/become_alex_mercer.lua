@@ -1,4 +1,5 @@
-if not SERVER then return end
+if SERVER then
+AddCSLuaFile()
 
 local NPC_CLASS = "drg_alex_mercer"
 local CLEANUP_TIMER = "BecomeAlexMercer.PossessionCleanup"
@@ -124,7 +125,7 @@ local function removePrevious(ply, key)
 	activePossessions[key] = nil
 end
 
-concommand.Add("become_alex_mercer", function(ply)
+concommand.Add("become_alex_mercer", function(ply, _, args)
 	if not IsValid(ply) or not ply:IsPlayer() then
 		print("[Become Alex Mercer] This command must be run by a player.")
 		return
@@ -182,6 +183,11 @@ concommand.Add("become_alex_mercer", function(ply)
 		return
 	end
 
+	local duration = tonumber(args and args[1])
+	if not duration or duration <= 0 or duration ~= duration or duration == math.huge then
+		duration = 0
+	end
+
 	local playerVelocity = ply:GetVelocity()
 	local result = npc:Possess(ply)
 	if result ~= "ok" then
@@ -195,9 +201,73 @@ concommand.Add("become_alex_mercer", function(ply)
 	preserveExitState(npc)
 	startCleanupTimer()
 
+	npc:SetNW2Float("BecomeAlexMercerDuration", duration)
+	npc:SetNW2Float("BecomeAlexMercerEndTime", duration > 0 and CurTime() + duration or 0)
+
+	if duration > 0 then
+		timer.Simple(duration, function()
+			if IsValid(npc) and IsValid(ply) and npc:IsPossessed() and npc:GetPossessor() == ply then
+				npc:Dispossess()
+			end
+		end)
+	end
+
 	timer.Simple(0, function()
 		if IsValid(npc) and IsValid(ply) and npc:IsPossessed() and npc:GetPossessor() == ply then
 			applyPlayerDisguise(npc, ply)
 		end
 	end)
 end)
+end
+
+if CLIENT then
+	local BAR_MATERIAL = Material("alex_mercer/hud/health_bar.png", "noclamp smooth")
+	local FILL_MATERIAL = Material("alex_mercer/hud/health_fill.png", "noclamp smooth")
+	local HEALTH_BAR_X, HEALTH_BAR_Y = 149.85, 71.25
+	local HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT = 600, 10
+	local TIMER_WIDTH_RATIO = 0.25
+	local TIMER_GAP = 6
+
+	local function getTimerData()
+		local ply = LocalPlayer()
+		if not IsValid(ply) or not isfunction(ply.DrG_GetPossessing) then return end
+
+		local npc = ply:DrG_GetPossessing()
+		if not IsValid(npc) or npc:GetClass() ~= "drg_alex_mercer" then return end
+
+		local duration = npc:GetNW2Float("BecomeAlexMercerDuration", 0)
+		if duration <= 0 then
+			return duration, 1, 0
+		end
+
+		local remaining = math.max(npc:GetNW2Float("BecomeAlexMercerEndTime", 0) - CurTime(), 0)
+		return duration, math.Clamp(remaining / duration, 0, 1), remaining
+	end
+
+	hook.Add("DrawOverlay", "BecomeAlexMercerTimer", function()
+		local duration, fraction, remaining = getTimerData()
+		if not duration then return end
+
+		local scale = ScrH() / 720
+		local width = HEALTH_BAR_WIDTH * TIMER_WIDTH_RATIO * scale
+		local height = HEALTH_BAR_HEIGHT * scale
+		local x = HEALTH_BAR_X * scale
+		local y = (HEALTH_BAR_Y - HEALTH_BAR_HEIGHT - TIMER_GAP) * scale
+
+		surface.SetDrawColor(255, 255, 255, 255)
+		surface.SetMaterial(BAR_MATERIAL)
+		surface.DrawTexturedRect(x, y, width, height)
+
+		if fraction > 0 then
+			render.SetScissorRect(math.floor(x), math.floor(y), math.ceil(x + width * fraction), math.ceil(y + height), true)
+			surface.SetMaterial(FILL_MATERIAL)
+			surface.DrawTexturedRect(x, y, width, height)
+			render.SetScissorRect(0, 0, 0, 0, false)
+		end
+
+		if duration > 0 then
+			draw.SimpleText(string.format("%.1f", remaining), "DermaDefaultBold", x + width * 0.5, y - 10 * scale,
+				Color(255, 255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+		end
+	end)
+end
