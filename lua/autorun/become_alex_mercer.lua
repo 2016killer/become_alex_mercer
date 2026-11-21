@@ -33,6 +33,18 @@ local function notify(ply, message)
 	end
 end
 
+hook.Add("EntityTakeDamage", "BecomeAlexMercerExitDamageProtection", function(ent, dmg)
+	if not IsValid(ent) or not ent:IsPlayer() or not dmg then return end
+
+	local key = playerKey(ent)
+	local mercer = activePossessions[key]
+	if not mercer then return end
+
+	if dmg:GetAttacker() == mercer or dmg:GetInflictor() == mercer then
+		return true
+	end
+end)
+
 local function setEnergy(ply, value)
 	if not IsValid(ply) or not ply:IsPlayer() then return end
 	value = math.Clamp(value, 0, ENERGY_MAX)
