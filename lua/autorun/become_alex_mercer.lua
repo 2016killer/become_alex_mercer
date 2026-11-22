@@ -250,8 +250,11 @@ local function preserveExitState(npc)
 		local velocity = self:GetVelocity()
 		local mercerEyeAngles = self:EyeAngles()
 		local recordedEyeAngles = IsValid(ply) and playerViewAngles[playerKey(ply)]
-		local eyeAngles = Angle(recordedEyeAngles and recordedEyeAngles.p or mercerEyeAngles.p, mercerEyeAngles.y,
-			mercerEyeAngles.r)
+		local eyeAngles = Angle(
+			recordedEyeAngles and recordedEyeAngles.p or mercerEyeAngles.p, 
+			recordedEyeAngles and recordedEyeAngles.y or mercerEyeAngles.y,
+			0
+		)
 		if IsValid(ply) then
 			ply[MERCER_HEALTH_ENTITY_KEY] = self:Health()
 			ply[MERCER_CRIT_ENTITY_KEY] = self:GetNW2Float(MERCER_CRIT_KEY, 0)
