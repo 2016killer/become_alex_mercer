@@ -3,7 +3,7 @@ AddCSLuaFile()
 
 local NPC_CLASS = "drg_alex_mercer"
 local CLEANUP_TIMER = "BecomeAlexMercer.PossessionCleanup"
-local ENERGY_TICK = 0.1
+local MAX_ENERGY_DT = 0.25
 local ENERGY_MAX = 1
 local ENERGY_NETWORK_KEY = "BecomeAlexMercerEnergy"
 local ENERGY_ENTITY_KEY = "BecomeAlexMercerEnergy"
@@ -13,6 +13,7 @@ local MERCER_CRIT_ENTITY_KEY = "BecomeAlexMercerCrit"
 
 local activePossessions = {}
 local playerViewAngles = {}
+local lastEnergyThink = CurTime()
 
 local EnergyThreshold = CreateConVar("become_alex_mercer_energy_threshold", "0.1",
 	{FCVAR_ARCHIVE, FCVAR_NOTIFY}, "变身前所需的最低能量")
@@ -141,9 +142,14 @@ hook.Add("OnNPCKilled", "BecomeAlexMercerEnergyKill", function(victim, attacker,
 	addEnergy(ply, EnergyKillReward:GetFloat())
 end)
 
-timer.Create("BecomeAlexMercer.EnergyTick", ENERGY_TICK, 0, function()
-	local drain = math.max(EnergyDrain:GetFloat(), 0) * ENERGY_TICK
-	local regen = math.max(EnergyRegen:GetFloat(), 0) * ENERGY_TICK
+hook.Add("Think", "BecomeAlexMercerEnergyThink", function()
+	local now = CurTime()
+	local dt = math.Clamp(now - lastEnergyThink, 0, MAX_ENERGY_DT)
+	lastEnergyThink = now
+	if dt <= 0 then return end
+
+	local drain = math.max(EnergyDrain:GetFloat(), 0) * dt
+	local regen = math.max(EnergyRegen:GetFloat(), 0) * dt
 
 	for _, ply in ipairs(player.GetAll()) do
 		if IsValid(ply) and ply:Alive() then
