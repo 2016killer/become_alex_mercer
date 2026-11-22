@@ -92,11 +92,11 @@ local function startCleanupTimer()
 	timer.Create(CLEANUP_TIMER, 0.1, 0, cleanupPossessions)
 end
 
-hook.Add("PlayerSpawn", "BecomeAlexMercerEnergySpawn", function(ply)
+hook.Add("PlayerSpawn", "BecomeAlexMercerEnergySpawn", function(ply, transition)
 	local key = playerKey(ply)
 	if ply[ENERGY_ENTITY_KEY] == nil then
 		setEnergy(ply, EnergyInitial:GetFloat())
-	else
+	elseif not transition then
 		setEnergy(ply, getEnergy(ply) + EnergyRespawnBonus:GetFloat())
 	end
 	playerViewAngles[key] = nil
