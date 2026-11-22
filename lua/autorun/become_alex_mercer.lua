@@ -22,6 +22,10 @@ local EnergyRegen = CreateConVar("become_alex_mercer_energy_regen", "0.05",
 	{FCVAR_ARCHIVE, FCVAR_NOTIFY}, "非附身状态每秒恢复的能量")
 local EnergyKillReward = CreateConVar("become_alex_mercer_energy_kill_reward", "0.2",
 	{FCVAR_ARCHIVE, FCVAR_NOTIFY}, "附身期间每击杀一个 NPC 恢复的能量")
+local EnergyInitial = CreateConVar("become_alex_mercer_energy_initial", "1",
+	{FCVAR_ARCHIVE, FCVAR_NOTIFY}, "玩家初始能量")
+local EnergyRespawnBonus = CreateConVar("become_alex_mercer_energy_respawn_bonus", "1",
+	{FCVAR_ARCHIVE, FCVAR_NOTIFY}, "玩家复活时增加的能量")
 
 local function playerKey(ply)
 	return ply:SteamID64() or tostring(ply:UserID())
@@ -57,7 +61,7 @@ local function getEnergy(ply)
 	if not IsValid(ply) or not ply:IsPlayer() then return 0 end
 	local energy = playerEnergy[playerKey(ply)]
 	if energy == nil then
-		energy = setEnergy(ply, ENERGY_MAX)
+		energy = setEnergy(ply, EnergyInitial:GetFloat())
 	end
 	return energy
 end
@@ -88,8 +92,13 @@ local function startCleanupTimer()
 end
 
 hook.Add("PlayerSpawn", "BecomeAlexMercerEnergyReset", function(ply)
-	setEnergy(ply, ENERGY_MAX)
-	playerViewAngles[playerKey(ply)] = nil
+	local key = playerKey(ply)
+	if playerEnergy[key] == nil then
+		setEnergy(ply, EnergyInitial:GetFloat())
+	else
+		setEnergy(ply, getEnergy(ply) + EnergyRespawnBonus:GetFloat())
+	end
+	playerViewAngles[key] = nil
 end)
 
 hook.Add("PlayerDisconnect", "BecomeAlexMercerEnergyCleanup", function(ply)
