@@ -23,6 +23,8 @@ local EnergyRegen = CreateConVar("become_alex_mercer_energy_regen", "0.05",
 	{FCVAR_ARCHIVE, FCVAR_NOTIFY}, "非附身状态每秒恢复的能量")
 local EnergyKillReward = CreateConVar("become_alex_mercer_energy_kill_reward", "0.2",
 	{FCVAR_ARCHIVE, FCVAR_NOTIFY}, "附身期间每击杀一个 NPC 恢复的能量")
+local EnergyKillRewardNormal = CreateConVar("become_alex_mercer_energy_kill_reward_normal", "0.05",
+	{FCVAR_ARCHIVE, FCVAR_NOTIFY}, "常规状态每击杀一个 NPC 恢复的能量")
 local EnergyInitial = CreateConVar("become_alex_mercer_energy_initial", "1",
 	{FCVAR_ARCHIVE, FCVAR_NOTIFY}, "玩家初始能量")
 local EnergyRespawnBonus = CreateConVar("become_alex_mercer_energy_respawn_bonus", "1",
@@ -139,7 +141,9 @@ hook.Add("OnNPCKilled", "BecomeAlexMercerEnergyKill", function(victim, attacker,
 	local ply = killerPlayer(attacker) or killerPlayer(inflictor)
 	if not IsValid(ply) or not ply:IsPlayer() or not ply:Alive() then return end
 
-	addEnergy(ply, EnergyKillReward:GetFloat())
+	local npc = activePossessions[playerKey(ply)]
+	local transformed = IsValid(npc) and npc:IsPossessed() and npc:GetPossessor() == ply
+	addEnergy(ply, transformed and EnergyKillReward:GetFloat() or EnergyKillRewardNormal:GetFloat())
 end)
 
 hook.Add("Think", "BecomeAlexMercerEnergyThink", function()
