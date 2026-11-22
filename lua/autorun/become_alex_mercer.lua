@@ -8,11 +8,11 @@ local ENERGY_MAX = 1
 local ENERGY_NETWORK_KEY = "BecomeAlexMercerEnergy"
 local ENERGY_ENTITY_KEY = "BecomeAlexMercerEnergy"
 local MERCER_CRIT_KEY = "MercerCrit"
+local MERCER_HEALTH_ENTITY_KEY = "BecomeAlexMercerHealth"
+local MERCER_CRIT_ENTITY_KEY = "BecomeAlexMercerCrit"
 
 local activePossessions = {}
 local playerViewAngles = {}
-local playerMercerHealth = {}
-local playerMercerCrit = {}
 
 local EnergyThreshold = CreateConVar("become_alex_mercer_energy_threshold", "0.1",
 	{FCVAR_ARCHIVE, FCVAR_NOTIFY}, "变身前所需的最低能量")
@@ -103,8 +103,16 @@ end)
 
 hook.Add("PlayerDisconnect", "BecomeAlexMercerEnergyCleanup", function(ply)
 	playerViewAngles[playerKey(ply)] = nil
-	playerMercerHealth[playerKey(ply)] = nil
-	playerMercerCrit[playerKey(ply)] = nil
+end)
+
+hook.Add("ShutDown", "BecomeAlexMercerCleanupEntities", function()
+	for key, npc in pairs(activePossessions) do
+		if IsValid(npc) then
+			npc:Remove()
+		end
+		activePossessions[key] = nil
+	end
+	timer.Remove(CLEANUP_TIMER)
 end)
 
 hook.Add("OnNPCKilled", "BecomeAlexMercerEnergyKill", function(victim, attacker, inflictor)
@@ -169,11 +177,11 @@ local function createMercer(ply)
 	npc:Spawn()
 	npc:Activate()
 
-	local savedHealth = playerMercerHealth[playerKey(ply)]
+	local savedHealth = ply[MERCER_HEALTH_ENTITY_KEY]
 	if savedHealth then
 		npc:SetHealth(savedHealth)
 	end
-	local savedCrit = playerMercerCrit[playerKey(ply)]
+	local savedCrit = ply[MERCER_CRIT_ENTITY_KEY]
 	if savedCrit then
 		npc:SetNW2Float(MERCER_CRIT_KEY, savedCrit)
 	end
@@ -235,8 +243,8 @@ local function preserveExitState(npc)
 		local eyeAngles = Angle(recordedEyeAngles and recordedEyeAngles.p or mercerEyeAngles.p, mercerEyeAngles.y,
 			mercerEyeAngles.r)
 		if IsValid(ply) then
-			playerMercerHealth[playerKey(ply)] = self:Health()
-			playerMercerCrit[playerKey(ply)] = self:GetNW2Float(MERCER_CRIT_KEY, 0)
+			ply[MERCER_HEALTH_ENTITY_KEY] = self:Health()
+			ply[MERCER_CRIT_ENTITY_KEY] = self:GetNW2Float(MERCER_CRIT_KEY, 0)
 			playerViewAngles[playerKey(ply)] = nil
 		end
 
