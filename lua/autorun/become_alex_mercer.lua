@@ -6,10 +6,10 @@ local CLEANUP_TIMER = "BecomeAlexMercer.PossessionCleanup"
 local ENERGY_TICK = 0.1
 local ENERGY_MAX = 1
 local ENERGY_NETWORK_KEY = "BecomeAlexMercerEnergy"
+local ENERGY_ENTITY_KEY = "BecomeAlexMercerEnergy"
 local MERCER_CRIT_KEY = "MercerCrit"
 
 local activePossessions = {}
-local playerEnergy = {}
 local playerViewAngles = {}
 local playerMercerHealth = {}
 local playerMercerCrit = {}
@@ -52,14 +52,14 @@ end)
 local function setEnergy(ply, value)
 	if not IsValid(ply) or not ply:IsPlayer() then return end
 	value = math.Clamp(value, 0, ENERGY_MAX)
-	playerEnergy[playerKey(ply)] = value
+	ply[ENERGY_ENTITY_KEY] = value
 	ply:SetNW2Float(ENERGY_NETWORK_KEY, value)
 	return value
 end
 
 local function getEnergy(ply)
 	if not IsValid(ply) or not ply:IsPlayer() then return 0 end
-	local energy = playerEnergy[playerKey(ply)]
+	local energy = ply[ENERGY_ENTITY_KEY]
 	if energy == nil then
 		energy = setEnergy(ply, EnergyInitial:GetFloat())
 	end
@@ -91,9 +91,9 @@ local function startCleanupTimer()
 	timer.Create(CLEANUP_TIMER, 0.1, 0, cleanupPossessions)
 end
 
-hook.Add("PlayerSpawn", "BecomeAlexMercerEnergyReset", function(ply)
+hook.Add("PlayerSpawn", "BecomeAlexMercerEnergySpawn", function(ply)
 	local key = playerKey(ply)
-	if playerEnergy[key] == nil then
+	if ply[ENERGY_ENTITY_KEY] == nil then
 		setEnergy(ply, EnergyInitial:GetFloat())
 	else
 		setEnergy(ply, getEnergy(ply) + EnergyRespawnBonus:GetFloat())
@@ -102,7 +102,6 @@ hook.Add("PlayerSpawn", "BecomeAlexMercerEnergyReset", function(ply)
 end)
 
 hook.Add("PlayerDisconnect", "BecomeAlexMercerEnergyCleanup", function(ply)
-	playerEnergy[playerKey(ply)] = nil
 	playerViewAngles[playerKey(ply)] = nil
 	playerMercerHealth[playerKey(ply)] = nil
 	playerMercerCrit[playerKey(ply)] = nil
